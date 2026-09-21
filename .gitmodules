@@ -17,3 +17,7 @@
 	path = src/MAAUnified
 	url = https://github.com/MaaAssistantArknights/MaaUnified.git
 	branch = main
+[submodule "tools/MaaDuelChannel"]
+	path = tools/MaaDuelChannel
+	url = https://github.com/baiyunquan/MaaDuelChannel.git
+	branch = feature/initial-pipeline
