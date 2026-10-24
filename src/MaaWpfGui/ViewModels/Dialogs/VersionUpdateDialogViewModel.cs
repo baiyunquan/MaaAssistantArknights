@@ -1,6 +1,6 @@
 // <copyright file="VersionUpdateDialogViewModel.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -62,14 +62,14 @@ public class VersionUpdateDialogViewModel : Screen
 
     private static readonly ILogger _logger = Log.ForContext<VersionUpdateDialogViewModel>();
 
-    private static readonly string s_contributorAvatarDir = Path.Combine(PathsHelper.CacheDir, "contributor");
+    private static readonly string _contributorAvatarDir = Path.Combine(PathsHelper.CacheDir, "contributor");
 
     private const string ContributorAvatarPlaceholderName = "_placeholder.png";
 
     // 32×32 全透明 PNG；头像未下载时占住 16px 位置，下载完成前后布局零跳动
     private const string PlaceholderAvatarBase64 = "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGklEQVR4nO3BAQEAAACCIP+vbkhAAQAAAO8GECAAARlDNO4AAAAASUVORK5CYII=";
 
-    private static readonly HashSet<string> s_downloadingAvatars = [];
+    private static readonly HashSet<string> _downloadingAvatars = [];
 
     private static string FormatUpdateInfo(string text)
     {
@@ -84,7 +84,7 @@ public class VersionUpdateDialogViewModel : Screen
         /*
         //        "@ " -> "@ "
         //       "`@`" -> "`@`"
-        //   "@MistEO" -> "![avatar](path "MistEO"){…} [@MistEO](https://github.com/MistEO)"
+        //   "@MistEO" -> "![avatar](path "MistEO"){…}[@MistEO](https://github.com/MistEO)"
         // "[@MistEO]" -> "[@MistEO]"
         */
         // 头像图片与用户名链接平级不嵌套：MdXaml 的内联匹配正则带 Singleline，
@@ -108,35 +108,35 @@ public class VersionUpdateDialogViewModel : Screen
             return string.Empty;
         }
 
-        string avatarPath = Path.Combine(s_contributorAvatarDir, user + ".png");
+        string avatarPath = Path.Combine(_contributorAvatarDir, user + ".png");
         string effectivePath = File.Exists(avatarPath)
             ? avatarPath
-            : Path.Combine(s_contributorAvatarDir, ContributorAvatarPlaceholderName);
+            : Path.Combine(_contributorAvatarDir, ContributorAvatarPlaceholderName);
 
         // 路径用正斜杠，Markdown 中反斜杠是转义字符；尺寸语法 {width=16px} 由 MdXaml 的 ImageResizeExt 渲染；
         // title（即渲染后的 ToolTip）携带用户名，供头像下载完成后在已渲染文档中定位占位图换源
-        return $"![avatar]({effectivePath.Replace('\\', '/')} \"{user}\"){{width=16px height=16px}} ";
+        return $"![avatar]({effectivePath.Replace('\\', '/')} \"{user}\"){{width=16px height=16px}}";
     }
 
-    private static bool s_placeholderAvatarReady;
+    private static bool _placeholderAvatarReady;
 
     private static bool EnsurePlaceholderAvatar()
     {
-        if (s_placeholderAvatarReady)
+        if (_placeholderAvatarReady)
         {
             return true;
         }
 
         try
         {
-            Directory.CreateDirectory(s_contributorAvatarDir);
-            string path = Path.Combine(s_contributorAvatarDir, ContributorAvatarPlaceholderName);
+            Directory.CreateDirectory(_contributorAvatarDir);
+            string path = Path.Combine(_contributorAvatarDir, ContributorAvatarPlaceholderName);
             if (!File.Exists(path))
             {
                 File.WriteAllBytes(path, Convert.FromBase64String(PlaceholderAvatarBase64));
             }
 
-            s_placeholderAvatarReady = true;
+            _placeholderAvatarReady = true;
         }
         catch (Exception e)
         {
@@ -144,7 +144,7 @@ public class VersionUpdateDialogViewModel : Screen
             _logger.Warning(e, "Failed to create placeholder contributor avatar");
         }
 
-        return s_placeholderAvatarReady;
+        return _placeholderAvatarReady;
     }
 
     /// <summary>
@@ -164,15 +164,15 @@ public class VersionUpdateDialogViewModel : Screen
 
         foreach (var user in users)
         {
-            string path = Path.Combine(s_contributorAvatarDir, user + ".png");
+            string path = Path.Combine(_contributorAvatarDir, user + ".png");
             if (File.Exists(path))
             {
                 continue;
             }
 
-            lock (s_downloadingAvatars)
+            lock (_downloadingAvatars)
             {
-                if (!s_downloadingAvatars.Add(user))
+                if (!_downloadingAvatars.Add(user))
                 {
                     continue;
                 }
@@ -184,7 +184,7 @@ public class VersionUpdateDialogViewModel : Screen
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
                     var content = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
-                    Directory.CreateDirectory(s_contributorAvatarDir);
+                    Directory.CreateDirectory(_contributorAvatarDir);
                     string tempPath = path + ".temp";
                     await File.WriteAllBytesAsync(tempPath, content).ConfigureAwait(false);
                     File.Move(tempPath, path);
@@ -197,9 +197,9 @@ public class VersionUpdateDialogViewModel : Screen
             }
             finally
             {
-                lock (s_downloadingAvatars)
+                lock (_downloadingAvatars)
                 {
-                    _ = s_downloadingAvatars.Remove(user);
+                    _ = _downloadingAvatars.Remove(user);
                 }
             }
         }
@@ -235,24 +235,20 @@ public class VersionUpdateDialogViewModel : Screen
         });
     }
 
-    private static IEnumerable<Image> EnumerateImages(BlockCollection blocks)
+    private static IEnumerable<Paragraph> EnumerateParagraphs(BlockCollection blocks)
     {
         foreach (var block in blocks)
         {
             switch (block)
             {
                 case Paragraph paragraph:
-                    foreach (var image in EnumerateImages(paragraph.Inlines))
-                    {
-                        yield return image;
-                    }
-
+                    yield return paragraph;
                     break;
 
                 case Section section:
-                    foreach (var image in EnumerateImages(section.Blocks))
+                    foreach (var nested in EnumerateParagraphs(section.Blocks))
                     {
-                        yield return image;
+                        yield return nested;
                     }
 
                     break;
@@ -260,9 +256,9 @@ public class VersionUpdateDialogViewModel : Screen
                 case List list:
                     foreach (var listItem in list.ListItems)
                     {
-                        foreach (var image in EnumerateImages(listItem.Blocks))
+                        foreach (var nested in EnumerateParagraphs(listItem.Blocks))
                         {
-                            yield return image;
+                            yield return nested;
                         }
                     }
 
@@ -275,9 +271,9 @@ public class VersionUpdateDialogViewModel : Screen
                         {
                             foreach (var cell in row.Cells)
                             {
-                                foreach (var image in EnumerateImages(cell.Blocks))
+                                foreach (var nested in EnumerateParagraphs(cell.Blocks))
                                 {
-                                    yield return image;
+                                    yield return nested;
                                 }
                             }
                         }
@@ -287,12 +283,26 @@ public class VersionUpdateDialogViewModel : Screen
 
                 // details 块渲染为 Expander，内容在嵌套 FlowDocumentScrollViewer 的文档里
                 case BlockUIContainer { Child: Expander { Content: FlowDocumentScrollViewer nested } }:
-                    foreach (var image in EnumerateImages(nested.Document.Blocks))
+                    if (nested.Document is not null)
                     {
-                        yield return image;
+                        foreach (var paragraph in EnumerateParagraphs(nested.Document.Blocks))
+                        {
+                            yield return paragraph;
+                        }
                     }
 
                     break;
+            }
+        }
+    }
+
+    private static IEnumerable<Image> EnumerateImages(BlockCollection blocks)
+    {
+        foreach (var paragraph in EnumerateParagraphs(blocks))
+        {
+            foreach (var image in EnumerateImages(paragraph.Inlines))
+            {
+                yield return image;
             }
         }
     }
@@ -326,9 +336,12 @@ public class VersionUpdateDialogViewModel : Screen
         }
     }
 
+    // UI 预览模式下 Core 未加载，不触碰 native，降级为占位值（预览模式不做更新比较）
     private readonly string _curVersion = FakeUpdateHelper.IsEnabled
         ? FakeUpdateHelper.CurrentVersion
-        : Marshal.PtrToStringAnsi(MaaService.AsstGetVersion()) ?? "0.0.1";
+        : Main.Bootstrapper.IsCoreInitSkipped
+            ? "N/A"
+            : Marshal.PtrToStringAnsi(MaaService.AsstGetVersion()) ?? "0.0.1";
 
     private string _latestVersion = string.Empty;
 
@@ -460,7 +473,6 @@ public class VersionUpdateDialogViewModel : Screen
         /// <summary>
         /// 操作成功
         /// </summary>
-        // ReSharper disable once InconsistentNaming
         OK,
 
         /// <summary>
@@ -568,7 +580,7 @@ public class VersionUpdateDialogViewModel : Screen
                     _ = Task.Run(() =>
                         MessageBoxHelper.Show(
                             LocalizationHelper.GetString("MirrorChyanSelectedButNoCdk"),
-                            "cdk is empty!",
+                            LocalizationHelper.GetString("Warning"),
                             MessageBoxButton.OK,
                             MessageBoxImage.Warning,
                             ok: LocalizationHelper.GetString("Ok")));
@@ -840,7 +852,6 @@ public class VersionUpdateDialogViewModel : Screen
         var selected = 0;
         for (int i = 0; i < latencies.Length; i++)
         {
-            // ReSharper disable once StringLiteralTypo
             var isInChina = urls[i].Contains("s3.maa-org.net") || urls[i].Contains("maa-ota.annangela.cn");
 
             if (latencies[i] < 0)
@@ -1357,8 +1368,8 @@ public class VersionUpdateDialogViewModel : Screen
 
     private async Task AskToRestartCore(string description, string title)
     {
-        // 自动安装，或用户点「立即更新/确定」：按启动设置决定是否写入 --skip-startup-auto-run。
-        // 选「稍后」不会走到这里，之后手动启动是正常流程，不会带 skip 参数。
+        // 自动安装，或用户点 ｢立即更新/确定｣ ：按启动设置决定是否写入 --skip-startup-auto-run。
+        // 选 ｢稍后｣ 不会走到这里，之后手动启动是正常流程，不会带 skip 参数。
         string[] updateRestartArgs = Bootstrapper.GetUpdateRestartArgsIfEnabled();
 
         if (SettingsViewModel.VersionUpdateSettings.AutoInstallUpdatePackage)
@@ -1523,7 +1534,6 @@ public class VersionUpdateDialogViewModel : Screen
                 fullPackage = curAssets as JObject;
             }
 
-            // ReSharper disable once InvertIf
             if (name.Contains("ota") && name.Contains($"{curVersionLower}_{latestVersionLower}"))
             {
                 _assetsObject = curAssets as JObject;
@@ -1937,7 +1947,6 @@ public class VersionUpdateDialogViewModel : Screen
             return false;
         }
 
-        // ReSharper disable once CommentTypo
         // v{Major}.{Minor}.{Patch}-{Prerelease}.{CommitDistance}.g{CommitHash}
         // v4.6.7-beta.2.1.g1234567
         // v4.6.8-5.g1234567

@@ -19,9 +19,9 @@ icon: ri:guide-fill
 
 1. 시스템 버전 확인
 
-   MAA 는 Windows 10/11만 지원합니다. 이전 버전의 Windows를 사용하는 경우 [FAQ](./faq.md#런타임-문제)를 참조하세요.
+   MAA 는 Windows 10/11만 지원합니다. 이전 버전의 Windows를 사용하는 경우 [FAQ](./faq.md#런타임-문제)를 참조하세요.
 
-   Windows 사용자가 아닌 경우 [에뮬레이터 및 장치 지원](./device/)을 참조하세요.
+   Windows 사용자가 아닌 경우 [에뮬레이터 및 장치 지원](./device/)의 해당 부분을 참조하세요.
 
 2. 에뮬레이터 지원 확인
 

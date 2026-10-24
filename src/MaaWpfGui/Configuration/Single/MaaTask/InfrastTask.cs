@@ -1,6 +1,6 @@
 // <copyright file="InfrastTask.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -78,6 +78,11 @@ public class InfrastTask : BaseTask, IJsonOnDeserialized
     /// </summary>
     public bool SendClue { get; set; } = true;
 
+    /// <summary>
+    /// Gets or sets a value indicating whether 继续专精
+    /// </summary>
+    public bool ContinueTraining { get; set; } = false;
+
     public string FiammettaTarget1 { get; set; } = "清流";
 
     public string FiammettaTarget2 { get; set; } = "可露希尔";
@@ -109,7 +114,18 @@ public class InfrastTask : BaseTask, IJsonOnDeserialized
     /// </summary>
     public bool UseAbyssalHunter { get; set; } = false;
 
-    public string CustomFileType { get; set; } = InfrastSettingsUserControlModel.UserDefined;
+    /// <summary>
+    /// Gets or sets a value indicating whether 是否启用周计划。
+    /// </summary>
+    public bool UseWeeklySchedule { get; set; }
+
+    /// <summary>
+    /// Gets or sets 周计划。当 <see cref="UseWeeklySchedule"/> 为 false 时不参与序列化。
+    /// </summary>
+    [JsonPredict(nameof(UseWeeklySchedule))]
+    public Dictionary<DayOfWeek, bool> WeeklySchedule { get; set; } = Enum.GetValues<DayOfWeek>().ToDictionary(i => i, _ => true);
+
+    public string CustomFileType { get; set; } = InfrastTaskUserControlModel.UserDefined;
 
     /// <summary>
     /// Gets or sets 自定义配置文件路径
@@ -129,6 +145,8 @@ public class InfrastTask : BaseTask, IJsonOnDeserialized
 
     public void OnDeserialized()
     {
+        WeeklySchedule ??= Enum.GetValues<DayOfWeek>().ToDictionary(i => i, _ => true);
+
         if (Mode != InfrastMode.Custom || string.IsNullOrWhiteSpace(Filename) || !File.Exists(Filename))
         {
             return;

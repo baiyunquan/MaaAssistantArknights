@@ -1,6 +1,6 @@
 // <copyright file="CopilotModel.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -15,7 +15,6 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using MaaWpfGui.Constants;
 using MaaWpfGui.Constants.Enums;
 using MaaWpfGui.Helper;
@@ -49,9 +48,9 @@ public class CopilotModel : CopilotBase
     [JsonProperty("difficulty")]
     public DifficultyFlags Difficulty { get; set; }
 
-    public List<(string Output, string? Color)> Output()
+    public List<CopilotOutput> Output()
     {
-        var output = new List<(string, string?)>();
+        var output = new List<CopilotOutput>();
         if (Documentation is not null)
         {
             var title = Documentation.Title;
@@ -74,20 +73,27 @@ public class CopilotModel : CopilotBase
         foreach (var oper in Opers)
         {
             count++;
-            var localizedName = DataHelper.GetLocalizedCharacterName(oper.Name);
-            var log = $"{localizedName}{PrintLevelInfo(oper)} {LocalizationHelper.GetString("CopilotSkill")} {oper.Skill}{PrintSkillLevel(oper)} {GetModuleInfo(oper.Requirements)}".Trim();
-            output.Add((log, UiLogColor.Message));
+            var localizedName = DataHelper.GetLocalizedCharacterName(oper.Name) ?? oper.Name;
+            var details = $"{PrintLevelInfo(oper)} {LocalizationHelper.GetString("CopilotSkill")} {oper.Skill}{PrintSkillLevel(oper)} {GetModuleInfo(oper.Requirements)}".TrimEnd();
+            output.Add(new CopilotOutput([new(localizedName, oper.Name), new(details)], UiLogColor.Message));
         }
 
         foreach (var group in Groups)
         {
             count++;
-            var groupName = group.Name + ": ";
-            var operInfos = group.Opers
-                .Select(oper => $"{DataHelper.GetLocalizedCharacterName(oper.Name)} {oper.Skill}{PrintSkillLevel(oper)} {GetModuleInfo(oper.Requirements)}".Trim())
-                .ToList();
+            var parts = new List<CopilotOutput.Part> { new(group.Name + ": ") };
+            foreach (var oper in group.Opers)
+            {
+                if (parts.Count > 1)
+                {
+                    parts.Add(new(" / "));
+                }
 
-            output.Add((groupName + string.Join(" / ", operInfos), UiLogColor.Message));
+                parts.Add(new(DataHelper.GetLocalizedCharacterName(oper.Name) ?? oper.Name, oper.Name));
+                parts.Add(new($" {oper.Skill}{PrintSkillLevel(oper)} {GetModuleInfo(oper.Requirements)}".TrimEnd()));
+            }
+
+            output.Add(new CopilotOutput(parts, UiLogColor.Message));
         }
 
         output.Add((LocalizationHelper.GetStringFormat("TotalOperatorsCount", count), UiLogColor.Message));
@@ -205,7 +211,11 @@ public class CopilotModel : CopilotBase
         /// <item>"SkillUsage" - 技能用法</item>
         /// <item>"Output" - 打印</item>
         /// <item>"SkillDaemon" - 摆完挂机</item>
+        /// <item>"ResetStopwatch" - 重置全局计时器</item>
         /// <item>"MoveCamera" - 移动镜头</item>
+        /// <item>"Click" - 点击</item>
+        /// <item>"Swipe" - 滑动</item>
+        /// <item>"SetUnitLocation" - 设置单位坐标</item>
         /// </list>
         /// </summary>
         [DefaultValue("Deploy")]
@@ -244,16 +254,22 @@ public class CopilotModel : CopilotBase
         public OperatorRole? Role { get; set; }
 
         /// <summary>
-        /// Gets or sets 干员名 或 群组名， type 为 "部署" 时必选，为 "技能" | "撤退" 时可选。
+        /// Gets or sets 干员名 或 群组名， type 为 "部署" 时必选，为 "技能" | "撤退" 时可选，为 "设置单位坐标" 时必选。
         /// </summary>
         [JsonProperty("name")]
         public string? Name { get; set; }
 
         /// <summary>
-        /// Gets or sets 部署干员的位置。type 为 "部署" 时必选。type 为 "技能" | "撤退" 时可选。
+        /// Gets or sets 部署干员的位置。type 为 "部署" 时必选。type 为 "技能" | "撤退" 时可选。type 为 "设置单位坐标" 时必选。
         /// </summary>
         [JsonProperty("location")]
         public List<int>? Location { get; set; }
+
+        /// <summary>
+        /// Gets or sets 点击的区域。type 为 "点击" 时与 location 至少填一个，同时填写时优先使用 rect，格式为 720p 基准像素矩形 [x, y, w, h]，点击时在区域内随机取点
+        /// </summary>
+        [JsonProperty("rect")]
+        public List<int>? Rect { get; set; }
 
         /// <summary>
         /// Gets or sets 部署干员的干员朝向。 type 为 "部署" 时必选。
@@ -305,6 +321,63 @@ public class CopilotModel : CopilotBase
         /// </summary>
         [JsonProperty("distance")]
         public List<double>? Distance { get; set; }
+
+        /// <summary>
+        /// Gets or sets 移动镜头时是否不归零击杀数。type 为 "移动镜头" 时可选，默认为 false；
+        /// 为 true 时不等待当前波次结束、击杀数不清零，适用于同一波次内移动镜头的场景
+        /// </summary>
+        [JsonProperty("keep_kills")]
+        public bool KeepKills { get; set; }
+
+        /// <summary>
+        /// Gets or sets 滑动起点的区域。type 为 "滑动" 时必选，格式为 720p 基准像素矩形 [x, y, w, h]
+        /// </summary>
+        [JsonProperty("begin")]
+        public List<int>? Begin { get; set; }
+
+        /// <summary>
+        /// Gets or sets 滑动终点的区域。type 为 "滑动" 时必选，格式为 720p 基准像素矩形 [x, y, w, h]
+        /// </summary>
+        [JsonProperty("end")]
+        public List<int>? End { get; set; }
+
+        /// <summary>
+        /// Gets or sets 滑动持续时间，单位毫秒。可选，默认为 0
+        /// </summary>
+        [JsonProperty("duration")]
+        public int Duration { get; set; }
+
+        /// <summary>
+        /// Gets or sets 主滑动结束后追加的补偿滑动方向，1/2/3/4 为上/下/左/右。可选，默认为 0（不启用）
+        /// </summary>
+        [JsonProperty("extra_swipe")]
+        public int ExtraSwipe { get; set; }
+
+        /// <summary>
+        /// Gets or sets 滑动起始斜率，按 ×10 整数表示，10 即 1.0。可选，未填时 core 按 10 处理，显式 0 合法（即斜率 0.0）
+        /// </summary>
+        [DefaultValue(10)]
+        [JsonProperty("slope_in")]
+        public int SlopeIn { get; set; } = 10;
+
+        /// <summary>
+        /// Gets or sets 滑动结束斜率，按 ×10 整数表示，10 即 1.0。可选，未填时 core 按 10 处理，显式 0 合法（即斜率 0.0）
+        /// </summary>
+        [DefaultValue(10)]
+        [JsonProperty("slope_out")]
+        public int SlopeOut { get; set; } = 10;
+
+        /// <summary>
+        /// Gets or sets 滑动期间是否暂停。可选，默认为 false，仅部分触控模式支持
+        /// </summary>
+        [JsonProperty("with_pause")]
+        public bool WithPause { get; set; }
+
+        /// <summary>
+        /// Gets or sets 是否启用高分辨率滑动修正。可选，默认为 false
+        /// </summary>
+        [JsonProperty("high_resolution_swipe_fix")]
+        public bool HighResolutionSwipeFix { get; set; }
 
         /// <summary>
         /// Gets or sets 描述，可选。会显示在界面上，没有实际作用

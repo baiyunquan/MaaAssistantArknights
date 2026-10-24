@@ -1,6 +1,6 @@
 // <copyright file="MiniGameEntry.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -47,6 +47,17 @@ public class MiniGameEntry
     /// Gets or sets localization key for Tip (optional).
     /// </summary>
     public string? TipKey { get; set; }
+
+    /// <summary>
+    /// Gets or sets the fallback display text of the UI category this entry is grouped into (optional).
+    /// </summary>
+    public string? Category { get; set; }
+
+    /// <summary>
+    /// Gets or sets localization key of the UI category this entry is grouped into (optional).
+    /// When unavailable, <see cref="Category"/> is used; when both are empty, the entry is categorized by its activity time.
+    /// </summary>
+    public string? CategoryKey { get; set; }
 
     /// <summary>
     /// Gets or sets minimum required client version (SemVer string) for this mini-game entry.

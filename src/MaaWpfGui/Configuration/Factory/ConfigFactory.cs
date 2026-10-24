@@ -1,6 +1,6 @@
 // <copyright file="ConfigFactory.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -45,7 +45,7 @@ public static class ConfigFactory
     // TODO: write backup method. WIP: https://github.com/Cryolitia/MaaAssistantArknights/tree/config
     private static readonly string _configBakFile = Path.Combine(ConfigDir, "gui.new.json.bak");
 
-    private static readonly ILogger _logger = Log.ForContext<ConfigurationHelper>();
+    private static readonly ILogger _logger = Log.ForContext("SourceContext", "ConfigFactory");
 
     private static readonly Lock _lock = new();
     private static Task? _saveTask;
@@ -59,10 +59,9 @@ public static class ConfigFactory
 
     public delegate void ConfigurationUpdateEventHandler(string key, object? oldValue, object? newValue);
 
-    // ReSharper disable once EventNeverSubscribedTo.Global
     public static event ConfigurationUpdateEventHandler? ConfigurationUpdateEvent;
 
-    private static readonly JsonSerializerOptions _options = new() { WriteIndented = true, Converters = { new DiscordWebhookFixConverter(), new GlobalGuiRenameConverter(), new ThirdPartyMigrationConverter(), new RecruitTaskHoldTagsConverter(), new FightTaskStageResetModeConverter(), new RoguelikeStartingOpersConverter(), new FaultTolerantRootConverter(), new TolerantEnumConverterFactory(), new FightTaskStageResetModeInvalidToIgnoreConverter() }, Encoder = JavaScriptEncoder.Create(UnicodeRanges.All), DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { JsonPredictSerializationModifier.Modify } } };
+    private static readonly JsonSerializerOptions _options = new() { WriteIndented = true, Converters = { new DiscordWebhookFixConverter(), new GlobalGuiRenameConverter(), new SettingsPageReorgMigrationConverter(), new ThirdPartyMigrationConverter(), new NotificationSettingsMigrationConverter(), new RecruitTaskHoldTagsConverter(), new FightTaskStageResetModeConverter(), new RoguelikeStartingOpersConverter(), new FaultTolerantRootConverter(), new TolerantEnumConverterFactory(), new FightTaskStageResetModeInvalidToIgnoreConverter() }, Encoder = JavaScriptEncoder.Create(UnicodeRanges.All), DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { JsonPredictSerializationModifier.Modify } } };
 
     private static readonly List<string> _brokenConfigs = [];
 
@@ -304,7 +303,6 @@ public static class ConfigFactory
         }
     }
 
-    // ReSharper disable once MemberCanBePrivate.Global
     public static Root Root => _rootConfig.Value;
 
     public static SpecificConfig CurrentConfig => Root.CurrentConfig;
@@ -344,6 +342,12 @@ public static class ConfigFactory
 
     private static bool Save(string? file = null, Root? root = null)
     {
+        if (Main.Bootstrapper.IsDemoMode)
+        {
+            // README 截图演示模式：不落盘任何配置文件，进程内状态退出即弃
+            return true;
+        }
+
         _semaphore.Wait();
         try
         {
@@ -363,6 +367,12 @@ public static class ConfigFactory
 
     private static async Task<bool> SaveAsync(string? file = null)
     {
+        if (Main.Bootstrapper.IsDemoMode)
+        {
+            // README 截图演示模式：不落盘任何配置文件，进程内状态退出即弃
+            return true;
+        }
+
         await _semaphore.WaitAsync();
         try
         {

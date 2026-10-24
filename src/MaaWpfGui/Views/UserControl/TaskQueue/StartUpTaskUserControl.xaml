@@ -17,7 +17,7 @@
     xmlns:taskQueue_vms="clr-namespace:MaaWpfGui.ViewModels.UserControl.TaskQueue"
     xmlns:ui_vms="clr-namespace:MaaWpfGui.ViewModels.UI"
     d:Background="White"
-    d:DataContext="{d:DesignInstance {x:Type taskQueue_vms:StartUpSettingsUserControlModel}}"
+    d:DataContext="{d:DesignInstance {x:Type taskQueue_vms:StartUpTaskUserControlModel}}"
     d:DesignWidth="220"
     s:View.ActionTarget="{Binding}"
     mc:Ignorable="d">
@@ -74,7 +74,6 @@
             Margin="0,5"
             hc:InfoElement.Title="{DynamicResource ClientType}"
             DisplayMemberPath="Display"
-            IsHitTestVisible="{Binding Run.Idle, Source={x:Static helper:Instances.SettingsViewModel}}"
             ItemsSource="{Binding ClientTypeList, Source={x:Static settings_vms:GameSettingsUserControlModel.Instance}}"
             SelectedValue="{Binding ClientType, Source={x:Static settings_vms:GameSettingsUserControlModel.Instance}}"
             SelectedValuePath="Value"
@@ -216,7 +215,6 @@
                     </StackPanel>
                     <hc:ComboBox
                         DisplayMemberPath="Display"
-                        IsHitTestVisible="{Binding Run.Idle, Source={x:Static helper:Instances.SettingsViewModel}}"
                         ItemsSource="{Binding TouchModeList}"
                         SelectedValue="{Binding TouchMode}"
                         SelectedValuePath="Value" />

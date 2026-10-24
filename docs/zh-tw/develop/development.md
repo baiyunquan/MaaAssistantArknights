@@ -130,7 +130,7 @@ icon: iconoir:developer
     4. 重複上述 8, 9, 10, 11 中的操作
 
 ::: tip
-開啟 Visual Studio 之後，和 Git 有關的操作可以不用命令列工具，直接使用 Visual Studio 內建的「Git 變更」功能即可。
+開啟 Visual Studio 之後，和 Git 有關的操作可以不用命令列工具，直接使用 Visual Studio 內建的 ｢Git 變更｣ 功能即可。
 :::
 
 ## 使用 VS Code 進行開發（可選）
@@ -222,7 +222,7 @@ MAA 使用一系列的格式化工具來確保倉庫中的程式碼和資源檔�
 
 ### 在 Visual Studio 中啟用 clang-format
 
-1. 安裝 clang-format 20.1.0 或更高版本
+1. 安裝 clang-format 23.1.1 或更高版本
 
    ```bash
    python -m pip install clang-format

@@ -15,7 +15,7 @@ icon: iconoir:developer
 
 ## プログラミングの仕方がわからないので、JSONファイルやドキュメントなどを少し変更したいのですが、どうすればいいですか？
 
-[「パラスちゃん」も理解できるGitHubのPull Requestの使用ガイド](./pr-tutorial.md)へようこそ（純WebサイトのPRチュートリアル）
+[｢パラスちゃん｣ も理解できるGitHubのPull Requestの使用ガイド](./pr-tutorial.md)へようこそ（純WebサイトのPRチュートリアル）
 
 ## 数行のコードを少しだけ変更したいが、環境設定が面倒。純粋なWeb編集も使いにくい。どうすればよいですか？
 
@@ -135,7 +135,7 @@ icon: iconoir:developer
     4. ステップ8、9、10、11 を繰り返し
 
 ::: tip
-Visual Studio 起動後、Git 操作は「Git 変更」画面からコマンドライン不要で可能
+Visual Studio 起動後、Git 操作は ｢Git 変更｣ 画面からコマンドライン不要で可能
 :::
 
 ## VSCodeでの開発（オプション）
@@ -225,7 +225,7 @@ pipインストール後もPre-commitを実行できない場合は、PIPイン�
 
 ### Visual Studioでclang-formatを有効にする
 
-1. clang-format バージョン20.1.0以上をインストールします。
+1. clang-format バージョン23.1.1以上をインストールします。
 
    ```bash
    python -m pip install clang-format

@@ -1,6 +1,6 @@
 // <copyright file="AsstInfrastTask.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -50,6 +50,11 @@ public class AsstInfrastTask : AsstBaseTask
     /// </list>
     /// </summary>
     public string UsesOfDrones { get; set; } = "_NotUse";
+
+    /// <summary>
+    /// Gets or sets a value indicating whether 训练室是否尝试连续专精
+    /// </summary>
+    public bool ContinueTraining { get; set; }
 
     /// <summary>
     /// Gets or sets 宿舍进驻心情阈值
@@ -121,6 +126,7 @@ public class AsstInfrastTask : AsstBaseTask
         {
             ["facility"] = JArray.FromObject(Facilitys),
             ["drones"] = UsesOfDrones,
+            ["continue_training"] = ContinueTraining,
             ["threshold"] = DormThreshold,
             ["dorm_notstationed_enabled"] = DormFilterNotStationedEnabled,
             ["dorm_trust_enabled"] = DormTrustEnabled,

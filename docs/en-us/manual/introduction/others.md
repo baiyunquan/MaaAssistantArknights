@@ -6,7 +6,7 @@ icon: icon-park-solid:other
 # Others
 
 ::: info UI-Only Feature
-Most features on this page are implemented by the UI layer. See [Getting Started](../newbie.md#about-this-documentation) for details.
+Most features on this page are implemented by the UI layer. See [Getting Started](../newbie.md) for details.
 :::
 
 ## GPU-Accelerated Inference
@@ -121,6 +121,7 @@ If automatic downloads fail or your network is poor, you can manually download t
   - **OTA package**: `MAAComponent-OTA-<current_version>_<target_version>-win-<arch>.zip`. The source version must match your current version.
 - After dragging, MAA will automatically extract and apply the update on next restart.
 - **Full package updates require manual confirmation**: Full packages clean old files in the installation directory (preserving `config`, `data`, `debug`, `cache`, `achievement`, etc.). Ensure MAA is installed in a standalone folder.
+- **Update restrictions while the installation is incomplete**: When resources are corrupted or a previous update failed and has not recovered, MAA rejects OTA packages (both automatic updates and drag-and-drop) and only accepts full packages; dragging in a full package of the same version is also allowed for recovery.
 
 ::: danger Full Package Update Risk
 If you place MAA directly in a disk root, Desktop, Downloads, or mix it with other programs/personal files at the same directory level, full package updates may delete sibling files. Always install MAA in a standalone folder and manually back up before updating.
@@ -145,7 +146,8 @@ If the dragged file is not one of the above update packages (e.g., software pack
 
 - **Software packages** (full / OTA): matched mainly by filename; the archive is **not** checked for the real architecture or version contents. Renaming (e.g. arm64 → x64) may still extract and install the wrong build. Do not change the original filename.
 - **Resource packages**: only checks for a GitHub direct-download zip layout and parses `version.json`; other resource files are **not** fully validated for completeness or correctness. Missing some files may still allow import.
-  :::
+
+:::
 
 ## Additional Notes
 

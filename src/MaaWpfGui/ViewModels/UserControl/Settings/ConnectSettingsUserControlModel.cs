@@ -1,6 +1,6 @@
 // <copyright file="ConnectSettingsUserControlModel.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -49,6 +49,8 @@ namespace MaaWpfGui.ViewModels.UserControl.Settings;
 /// </summary>
 public class ConnectSettingsUserControlModel : PropertyChangedBase
 {
+    private readonly RunningState _runningState = RunningState.Instance;
+
     static ConnectSettingsUserControlModel()
     {
         Instance = new();
@@ -56,7 +58,7 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
 
         // MuMu 触控勾选框的跨实例依赖须在 Instance 就绪后注册，
         // 放进构造链会因静态构造重入拿到 null 的 Instance 而静默失败
-        PropertyDependsOnUtility.InitializePropertyDependencies(Instance.Extras.Mumu12);
+        PropertyDependsOnUtility.InitializePropertyDependencies(Instance._extras.Mumu12);
     }
 
     private ConnectSettingsUserControlModel()
@@ -64,12 +66,13 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
         PropertyDependsOnUtility.InitializePropertyDependencies(this);
 
         // 刷新截图方式选项的可用状态
-        Extras.Win32.UpdateScreencapMethodAvailability();
+        _extras.Win32.UpdateScreencapMethodAvailability();
 
-        Extras.Win32.PropertyChanged += (_, e) => {
+        _extras.Win32.PropertyChanged += (_, e) => {
             if (e.PropertyName == nameof(Win32Extra.MouseMethod))
             {
                 NotifyOfPropertyChange(nameof(ShowWindowRestoreButton));
+                NotifyOfPropertyChange(nameof(ShowWindowMinimizeButton));
             }
         };
 
@@ -87,8 +90,6 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
 
     private static readonly ILogger _logger = Log.ForContext<ConnectSettingsUserControlModel>();
 
-    private static RunningState _runningState => RunningState.Instance;
-
     /// <summary>
     /// Gets the list of the configuration of connection.
     /// </summary>
@@ -96,6 +97,7 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
         (ConnectConfig.General, "General"),
         (ConnectConfig.BlueStacks, "BlueStacks"),
         (ConnectConfig.MuMuEmulator12, "MuMuEmulator12"),
+        (ConnectConfig.MuMuArm, "MuMuArm"),
         (ConnectConfig.LDPlayer, "LDPlayer"),
         (ConnectConfig.Androws, "Androws"),
         (ConnectConfig.AVD, "AVD"),
@@ -209,7 +211,8 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
     public string AdbPath
     {
         get; set {
-            if (!Path.GetFileName(value).ToLower().Contains("adb"))
+            // 空路径视为用户清空输入、交由自动检测重填，不属于“文件名不含 ADB”
+            if (!string.IsNullOrWhiteSpace(value) && !Path.GetFileName(value).ToLower().Contains("adb"))
             {
                 var count = 3;
                 while (count-- > 0)
@@ -255,13 +258,13 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
 
     [PropertyDependsOn(nameof(ConnectConfig))]
     public ExtraConfig? ExtraConfig => ConnectConfig switch {
-        ConnectConfig.LDPlayer => Extras.LdPlayer,
-        ConnectConfig.MuMuEmulator12 => Extras.Mumu12,
-        ConnectConfig.PC => Extras.Win32,
+        ConnectConfig.LDPlayer => _extras.LdPlayer,
+        ConnectConfig.MuMuEmulator12 => _extras.Mumu12,
+        ConnectConfig.PC => _extras.Win32,
         _ => null,
     };
 
-    private readonly ExtraConfigs Extras = new();
+    private readonly ExtraConfigs _extras = new();
 
     private class ExtraConfigs
     {
@@ -315,6 +318,27 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
     } = ConfigFactory.CurrentConfig.Gui.StartUpSettings.RestartEmulatorWhenAdbFailed;
 
     /// <summary>
+    /// Gets or sets a value indicating whether to start the PC client again after a window connection failure.
+    /// </summary>
+    public bool RetryPcClientOnDisconnected
+    {
+        get; set {
+            if (value && string.IsNullOrEmpty(SettingsViewModel.StartSettings.PcClientPath))
+            {
+                MessageBoxHelper.Show(
+                    LocalizationHelper.GetString("RetryOnPcDisconnectedPathEmptyError"),
+                    LocalizationHelper.GetString("Tip"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                value = false;
+            }
+
+            SetAndNotify(ref field, value);
+            ConfigFactory.CurrentConfig.Gui.StartUpSettings.RestartPcClientWhenConnectFailed = value;
+        }
+    } = ConfigFactory.CurrentConfig.Gui.StartUpSettings.RestartPcClientWhenConnectFailed;
+
+    /// <summary>
     /// Gets or sets a value indicating whether to retry task after ADB disconnected.
     /// </summary>
     public bool AllowAdbRestart
@@ -360,6 +384,7 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
     public Dictionary<string, List<string>> DefaultAddress { get; } = new()
         {
             { "General", [string.Empty] },
+            { "MuMuArm", [] },
             { "BlueStacks", ["127.0.0.1:5555", "127.0.0.1:5556", "127.0.0.1:5565", "127.0.0.1:5575", "127.0.0.1:5585", "127.0.0.1:5595", "127.0.0.1:5554"] },
             { "MuMuEmulator12", ["127.0.0.1:16384", "127.0.0.1:16416", "127.0.0.1:16448", "127.0.0.1:16480", "127.0.0.1:16512", "127.0.0.1:16544", "127.0.0.1:16576"] },
             { "LDPlayer", ["emulator-5554", "emulator-5556", "emulator-5558", "emulator-5560", "127.0.0.1:5555", "127.0.0.1:5557", "127.0.0.1:5559", "127.0.0.1:5561"] },
@@ -413,6 +438,10 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
         try
         {
             emulators = adapter.RefreshEmulatorsInfo();
+            if (ConnectConfig == ConnectConfig.MuMuArm)
+            {
+                emulators.RemoveAll(emulator => emulator.EmulatorName != ConnectConfig.MuMuArm);
+            }
         }
         catch (Exception e)
         {
@@ -456,6 +485,20 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
         {
             error = LocalizationHelper.GetString("AdbException");
             return false;
+        }
+
+        // MuMu ARM exposes its endpoint in the running instance's state file,
+        // even before it appears in `adb devices`. Never select an unrelated device.
+        if (selectedEmulator?.EmulatorName == ConnectConfig.MuMuArm)
+        {
+            if (string.IsNullOrEmpty(selectedEmulator.Address))
+            {
+                error = LocalizationHelper.GetString("MuMuArmConnectionNotReady");
+                return false;
+            }
+
+            ConnectAddress = selectedEmulator.Address;
+            return true;
         }
 
         var addresses = WinAdapter.GetAdbAddresses(AdbPath);
@@ -555,8 +598,26 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
     private static Window? _imagePopupWindow;
 
     /// <summary>
+    /// Enables persistent detection of the running MuMu ARM instance and tests its connection and screenshot.
+    /// </summary>
+    /// <returns>Task</returns>
+    [UsedImplicitly]
+    public async Task DetectMuMuArmConnection()
+    {
+        if (!_runningState.GetIdle())
+        {
+            return;
+        }
+
+        AutoDetectConnection = true;
+
+        // MuMu ARM can receive a new IP address when the instance restarts.
+        AlwaysAutoDetectConnection = true;
+        await TestLinkAndGetImage();
+    }
+
+    /// <summary>
     /// Test Link And Get Image.
-    /// UI 绑定的方法
     /// </summary>
     /// <returns>Task</returns>
     [UsedImplicitly]
@@ -564,6 +625,12 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
     {
         if (!_runningState.GetIdle())
         {
+            return;
+        }
+
+        if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
+        {
+            TestLinkInfo = reason;
             return;
         }
 
@@ -580,12 +647,23 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
             return;
         }
 
-        TestLinkImage = await Instances.AsstProxy.AsstGetImageAsync(forceScreencap: true);
-        _runningState.SetIdle(true);
+        try
+        {
+            TestLinkImage = await Instances.AsstProxy.AsstGetImageAsync(forceScreencap: true);
+        }
+        finally
+        {
+            if (ShowWindowRestoreButton)
+            {
+                Instances.AsstProxy.RestoreGameWindowPosition();
+            }
+
+            _runningState.SetIdle(true);
+        }
 
         if (TestLinkImage is null)
         {
-            TestLinkInfo = "Image is null";
+            TestLinkInfo = LocalizationHelper.GetString("ImageIsNull");
             return;
         }
 
@@ -699,7 +777,6 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
 
         var allLines = File.ReadAllLines(_bluestacksConfig);
 
-        // ReSharper disable once InvertIf
         if (string.IsNullOrEmpty(_bluestacksKeyWord))
         {
             foreach (var line in allLines)
@@ -751,7 +828,7 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
     } = ConfigFactory.CurrentConfig.Gui.ConnectSettings.TouchMode;
 
     /// <summary>
-    /// 根据 MuMu 截图增强的开关状态，动态增删触控模式下拉列表中的「MuMu 触控」选项。
+    /// 根据 MuMu 截图增强的开关状态，动态增删触控模式下拉列表中的 ｢MuMu 触控｣ 选项。
     /// 仅增删下拉项，不自动切换当前触控模式——切换由触控增强勾选框负责。
     /// </summary>
     /// <param name="mumuExtrasEnabled">MuMu 截图增强是否已启用。</param>
@@ -782,75 +859,101 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
         Instances.AsstProxy.AsstSetInstanceOption(InstanceOptionKey.KillAdbOnExit, KillAdbOnExit ? "1" : "0");
     }
 
+    /// <summary>
+    /// Gets or sets a value indicating whether 替换 ADB 进行中（含下载与解压全过程），期间禁用按钮防止并发写同一 adb.zip。
+    /// </summary>
+    public bool IsReplacingAdb
+    {
+        get; set {
+            if (SetAndNotify(ref field, value))
+            {
+                NotifyOfPropertyChange(nameof(CanReplaceAdb));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether 当前可触发替换 ADB（非进行中）。
+    /// </summary>
+    public bool CanReplaceAdb => !IsReplacingAdb;
+
     // UI 绑定的方法
     [UsedImplicitly]
     public async Task ReplaceAdb()
     {
-        if (!File.Exists(MaaUrls.GoogleAdbFilename))
+        IsReplacingAdb = true;
+        try
         {
-            string[] downloadUrls =
-            [
-                MaaUrls.GoogleAdbDownloadUrl,
-                MaaUrls.AdbMaaMirrorDownloadUrl,
-                MaaUrls.AdbMaaMirror2DownloadUrl
-            ];
-
-            bool downloadResult = false;
-            foreach (var url in downloadUrls)
+            if (!File.Exists(MaaUrls.GoogleAdbFilename))
             {
-                downloadResult = await Instances.HttpService.DownloadFileAsync(new(url), MaaUrls.GoogleAdbFilename);
-                if (downloadResult)
+                string[] downloadUrls =
+                [
+                    MaaUrls.GoogleAdbDownloadUrl,
+                    MaaUrls.AdbMaaMirrorDownloadUrl,
+                    MaaUrls.AdbMaaMirror2DownloadUrl
+                ];
+
+                bool downloadResult = false;
+                foreach (var url in downloadUrls)
                 {
-                    break;
+                    downloadResult = await Instances.HttpService.DownloadFileAsync(new(url), MaaUrls.GoogleAdbFilename);
+                    if (downloadResult)
+                    {
+                        break;
+                    }
+                }
+
+                if (!downloadResult)
+                {
+                    using var toast = new ToastNotification(LocalizationHelper.GetString("AdbDownloadFailedTitle"));
+                    toast.AppendContentText(LocalizationHelper.GetString("AdbDownloadFailedDesc")).Show();
+                    return;
                 }
             }
 
-            if (!downloadResult)
+            const string UnzipDir = "adb";
+            const string NewAdb = UnzipDir + "/platform-tools/adb.exe";
+
+            try
             {
-                using var toast = new ToastNotification(LocalizationHelper.GetString("AdbDownloadFailedTitle"));
-                toast.AppendContentText(LocalizationHelper.GetString("AdbDownloadFailedDesc")).Show();
+                if (Directory.Exists(UnzipDir))
+                {
+                    Directory.Delete(UnzipDir, true);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("An error occurred while deleting directory: {Type}: {ExMessage}", ex.GetType(), ex.Message);
+                ToastNotification.ShowDirect(LocalizationHelper.GetString("AdbDeletionFailedMessage"));
                 return;
             }
-        }
 
-        const string UnzipDir = "adb";
-        const string NewAdb = UnzipDir + "/platform-tools/adb.exe";
-
-        try
-        {
-            if (Directory.Exists(UnzipDir))
+            try
             {
-                Directory.Delete(UnzipDir, true);
+                ZipFile.ExtractToDirectory(MaaUrls.GoogleAdbFilename, UnzipDir);
+            }
+            catch (Exception e)
+            {
+                _logger.Error(e, "UnzipFailedMessage");
+                ToastNotification.ShowDirect(LocalizationHelper.GetString("UnzipFailedMessage"));
+                return;
+            }
+
+            if (File.Exists(NewAdb))
+            {
+                AdbPath = NewAdb;
+                AdbReplaced = true;
+                ConfigFactory.CurrentConfig.Gui.ConnectSettings.AdbReplaced = true;
+                ToastNotification.ShowDirect(LocalizationHelper.GetString("SuccessfullyReplacedAdb"));
+            }
+            else
+            {
+                ToastNotification.ShowDirect(LocalizationHelper.GetString("FailedToReplaceAdbAndUseLocal"));
             }
         }
-        catch (Exception ex)
+        finally
         {
-            _logger.Error("An error occurred while deleting directory: {Type}: {ExMessage}", ex.GetType(), ex.Message);
-            ToastNotification.ShowDirect(LocalizationHelper.GetString("AdbDeletionFailedMessage"));
-            return;
-        }
-
-        try
-        {
-            ZipFile.ExtractToDirectory(MaaUrls.GoogleAdbFilename, UnzipDir);
-        }
-        catch (Exception e)
-        {
-            _logger.Error(e, "UnzipFailedMessage");
-            ToastNotification.ShowDirect(LocalizationHelper.GetString("UnzipFailedMessage"));
-            return;
-        }
-
-        if (File.Exists(NewAdb))
-        {
-            AdbPath = NewAdb;
-            AdbReplaced = true;
-            ConfigFactory.CurrentConfig.Gui.ConnectSettings.AdbReplaced = true;
-            ToastNotification.ShowDirect(LocalizationHelper.GetString("SuccessfullyReplacedAdb"));
-        }
-        else
-        {
-            ToastNotification.ShowDirect(LocalizationHelper.GetString("FailedToReplaceAdbAndUseLocal"));
+            IsReplacingAdb = false;
         }
     }
 
@@ -864,6 +967,13 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
     [PropertyDependsOn(nameof(ConnectConfig))]
     public bool ShowWindowRestoreButton =>
         IsPCConnectConfig && ExtraConfig is Models.EmulatorConnectionExtra.Win32Extra { MouseMethod: AsstWin32InputMethod.SendMessageWithWindowPos or AsstWin32InputMethod.PostMessageWithWindowPos };
+
+    /// <summary>
+    /// Gets a value indicating whether to show the window minimize button for PC PostMsg-WindowPos input.
+    /// </summary>
+    [PropertyDependsOn(nameof(ConnectConfig))]
+    public bool ShowWindowMinimizeButton =>
+        IsPCConnectConfig && ExtraConfig is Models.EmulatorConnectionExtra.Win32Extra { MouseMethod: AsstWin32InputMethod.PostMessageWithWindowPos };
 
     [PropertyDependsOn(nameof(ConnectConfig))]
     public bool IsPCConnectConfig => ConnectConfig == ConnectConfig.PC;
